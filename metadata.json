@@ -1,0 +1,7 @@
+{
+  "name": "FinanceAI Expert",
+  "description": "Une application de conseil financier propulsée par l'IA avec synthèse vocale pour des recommandations personnalisées et une analyse de données visuelle.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
