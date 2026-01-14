@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { GoogleGenAI, Modality, LiveServerMessage } from '@google/genai';
 import { decode, decodeAudioData, createBlob } from '../services/audioService';
 
-const API_KEY = process.env.API_KEY || '';
+const API_KEY = (import.meta as any).env.VITE_GEMINI_API_KEY || '';
 
 interface AdvisorChatProps {
   lang: 'fr' | 'en';
