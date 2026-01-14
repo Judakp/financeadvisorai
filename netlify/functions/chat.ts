@@ -1,23 +1,27 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
 export const handler = async (event: any) => {
-  // On utilise VITE_GEMINI_API_KEY pour être cohérent avec votre config Netlify
   const genAI = new GoogleGenerativeAI(process.env.VITE_GEMINI_API_KEY || '');
   
   try {
-    const { message, history } = JSON.parse(event.body);
+    const { message, history, lang } = JSON.parse(event.body);
+
+    // Configuration des instructions selon la langue
+    const systemInstruction = lang === 'fr' 
+      ? `Tu es un conseiller financier expert international. Réponds de manière professionnelle et concise (3 à 5 phrases). Utilise le FCFA pour l'Afrique et le Dollar pour les USA.`
+      : `You are an international financial expert advisor. Respond professionally and concisely (3 to 5 sentences). Use FCFA for Africa and Dollar for USA.`;
 
     const model = genAI.getGenerativeModel({ 
-      model: 'gemini-1.5-flash', 
-      systemInstruction: `Tu es un expert en finance personnelle et conseiller patrimonial français. 
-      Ton but est d'aider les utilisateurs à mieux gérer leur argent, épargner, et investir intelligemment. 
-      Réponds toujours de manière professionnelle, claire et encourageante. 
-      N'hésite pas à poser des questions pour mieux comprendre la situation financière de l'utilisateur. 
-      Mentionne toujours que tes conseils sont à titre informatif et qu'il est bon de consulter un professionnel certifié avant de prendre des décisions majeures.`,
+      model: 'gemini-1.5-flash', // Modèle stable pour les fonctions serverless
+      systemInstruction: systemInstruction,
     });
 
+    // On formate l'historique pour le SDK Google
     const chat = model.startChat({
-      history: history,
+      history: history.map((h: any) => ({
+        role: h.role === 'user' ? 'user' : 'model',
+        parts: [{ text: h.text }],
+      })),
     });
 
     const result = await chat.sendMessage(message);
@@ -25,16 +29,13 @@ export const handler = async (event: any) => {
     
     return {
       statusCode: 200,
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ text: response.text() }),
     };
   } catch (error: any) {
-    console.error(error);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: "Erreur lors de la génération : " + error.message }),
+      body: JSON.stringify({ error: error.message }),
     };
   }
 };
