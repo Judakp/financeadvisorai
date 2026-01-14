@@ -14,42 +14,26 @@ export const AdvisorChat: React.FC<AdvisorChatProps> = ({ lang }) => {
   
   const recognitionRef = useRef<any>(null);
 
-  // 1. FONCTION DE SYNTHÈSE VOCALE (L'IA PARLE)
   const speak = useCallback((text: string) => {
     if (!window.speechSynthesis) return;
-
-    // On annule toute parole en cours
     window.speechSynthesis.cancel();
-
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = lang === 'fr' ? 'fr-FR' : 'en-US';
     utterance.rate = 1.0; 
     utterance.pitch = 1.0;
 
-    utterance.onstart = () => {
-      setStatus('speaking');
-    };
-
+    utterance.onstart = () => setStatus('speaking');
     utterance.onend = () => {
       if (isActive) {
         setStatus('listening');
-        // On relance l'écoute seulement après que l'IA a fini de parler
-        try {
-          recognitionRef.current?.start();
-        } catch (e) {
-          console.debug("Recognition already started or error:", e);
-        }
+        try { recognitionRef.current?.start(); } catch (e) {}
       }
     };
-
     window.speechSynthesis.speak(utterance);
   }, [lang, isActive]);
 
-  // 2. ENVOI AU BACKEND ET RÉCEPTION DE LA RÉPONSE
   const handleChatRequest = async (text: string) => {
     if (!text.trim()) return;
-    
-    // On arrête d'écouter pendant que l'IA réfléchit
     recognitionRef.current?.stop();
     setStatus('connecting');
 
@@ -65,16 +49,13 @@ export const AdvisorChat: React.FC<AdvisorChatProps> = ({ lang }) => {
       });
 
       const data = await response.json();
-      
       setTranscriptions(prev => [
         ...prev,
         { role: 'user', text: text },
         { role: 'model', text: data.text }
       ].slice(-10));
       
-      // L'IA lit la réponse à haute voix
       speak(data.text);
-
     } catch (err) {
       console.error("Erreur Backend:", err);
       setStatus('idle');
@@ -82,7 +63,6 @@ export const AdvisorChat: React.FC<AdvisorChatProps> = ({ lang }) => {
     }
   };
 
-  // 3. INITIALISATION DE LA RECONNAISSANCE VOCALE
   const startSession = useCallback(async () => {
     if (!SpeechRecognition) {
       alert("Votre navigateur ne supporte pas la reconnaissance vocale.");
@@ -104,15 +84,19 @@ export const AdvisorChat: React.FC<AdvisorChatProps> = ({ lang }) => {
       handleChatRequest(transcript);
     };
 
+    // CHANGEMENT ICI : Gestion intelligente des erreurs
     recognition.onerror = (event: any) => {
-      console.error("Erreur reco vocale:", event.error);
-      if (event.error !== 'no-speech') {
-        stopSession();
+      if (event.error === 'no-speech') {
+        // C'est juste un silence, on ne coupe pas la session
+        console.warn("Aucun discours détecté, on continue d'écouter...");
+        return; 
       }
+      console.error("Erreur reco vocale:", event.error);
+      stopSession();
     };
 
     recognition.onend = () => {
-      // Si on est en mode écoute (et pas en train de parler), on relance
+      // Si on est toujours actif et qu'on n'est pas en train de parler, on relance
       if (isActive && status === 'listening') {
         try { recognition.start(); } catch(e) {}
       }
@@ -123,7 +107,7 @@ export const AdvisorChat: React.FC<AdvisorChatProps> = ({ lang }) => {
   }, [lang, isActive, status]);
 
   const stopSession = useCallback(() => {
-    window.speechSynthesis.cancel(); // On coupe le son de l'IA
+    window.speechSynthesis.cancel();
     if (recognitionRef.current) {
       recognitionRef.current.stop();
     }
@@ -142,7 +126,6 @@ export const AdvisorChat: React.FC<AdvisorChatProps> = ({ lang }) => {
 
   return (
     <div className="flex flex-col h-full bg-white border border-slate-200 rounded-3xl shadow-xl overflow-hidden transition-all duration-500">
-      {/* Header */}
       <div className="bg-slate-900 p-5 flex items-center justify-between text-white">
         <div className="flex items-center space-x-3">
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${isActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-700'}`}>
@@ -155,7 +138,6 @@ export const AdvisorChat: React.FC<AdvisorChatProps> = ({ lang }) => {
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="flex-1 p-6 flex flex-col bg-slate-50/50 relative overflow-hidden">
         {!isActive ? (
           <div className="text-center my-auto">
