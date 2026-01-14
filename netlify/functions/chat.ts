@@ -1,14 +1,14 @@
-const { GoogleGenerativeAI } = require("@google/generative-ai");
+import { GoogleGenerativeAI } from "@google/generative-ai";
 
-exports.handler = async (event) => {
-  // On récupère la clé API depuis les variables d'environnement de Netlify
-  const genAI = new GoogleGenerativeAI(process.env.GOOGLE_API_KEY);
+export const handler = async (event: any) => {
+  // On utilise VITE_GEMINI_API_KEY pour être cohérent avec votre config Netlify
+  const genAI = new GoogleGenerativeAI(process.env.VITE_GEMINI_API_KEY || '');
   
   try {
     const { message, history } = JSON.parse(event.body);
 
     const model = genAI.getGenerativeModel({ 
-      model: 'gemini-1.5-flash', // ou 'gemini-3-flash-preview' selon votre accès
+      model: 'gemini-1.5-flash', 
       systemInstruction: `Tu es un expert en finance personnelle et conseiller patrimonial français. 
       Ton but est d'aider les utilisateurs à mieux gérer leur argent, épargner, et investir intelligemment. 
       Réponds toujours de manière professionnelle, claire et encourageante. 
@@ -25,13 +25,16 @@ exports.handler = async (event) => {
     
     return {
       statusCode: 200,
+      headers: {
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({ text: response.text() }),
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error(error);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: "Erreur lors de la génération du contenu" }),
+      body: JSON.stringify({ error: "Erreur lors de la génération : " + error.message }),
     };
   }
 };
