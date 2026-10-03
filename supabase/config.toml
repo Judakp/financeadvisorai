@@ -1,0 +1,4 @@
+[functions.chat]
+# Public browser-facing endpoint. Keep the Gemini key server-side and use the
+# included rate limiter. For a private app, enable JWT verification and require sign-in.
+verify_jwt = false
